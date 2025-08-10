@@ -1,0 +1,189 @@
+{
+  "name": "Demo: My first AI Agent in n8n 2",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Start by saying 'hi'\n![Button](https://i.imgur.com/PrIBJI6.png)",
+        "height": 149,
+        "width": 150
+      },
+      "id": "5592c045-6718-4c4e-9961-ce67a251b6df",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        192,
+        -48
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.inputChat }}",
+        "options": {
+          "systemMessage": "=You are a news/business monitoring agent.\n\n0. Always start by requesting two pieces of information if they are missing: sector/industry and company name (or country if it is a public organization).\n\n1. Once you have the information about company name and the sector, use the SerpAPI tool to search for three relevant and recent results (≤ 30 days) on the sector AND the company.\n\n2. Require separate sources (avoid duplicates/single domain).\n\n3. For each SerpAPI call, request the following fields: title, link, snippet, date if available (format YYYY-MM-DD), but make sure for the date that if it is \"date\":\"3hours ago\" it means you should return YYYY-MM-DD of today's date.\n\n4. Do not invent anything outside of the tool's results.\n\n5. Reply to the user in the chat with the expected output:\n\nExpected output (EN, max ~200 words):\n\n1–2 opening sentences summarizing the most striking information.\n\n2–4 key bullet points, each beginning with an ISO date (YYYY-MM-DD) if known.\n\nSources: list of 3 lines • Title — Domain (URL).\n\nIf <2 useful results, perform a second search by adjusting the query (add keywords: financing, partnership, regulation, acquisition, “site:news”, country).\n\nLanguage: respond in English.\n\nNever exceed 220 words.\n\n6. Add a row the the table 'schoolab' using the supabase tool, and send to it the result/output of the step 5."
+        }
+      },
+      "id": "41174c8a-6ac8-42bd-900e-ca15196600c5",
+      "name": "Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        592,
+        32
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        464,
+        240
+      ],
+      "id": "2bf0cfd3-e574-481d-95e3-452f641b60b5",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "cr8UefKUBpydvRQc",
+          "name": "OpenAi account 4"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolSerpApi",
+      "typeVersion": 1,
+      "position": [
+        944,
+        256
+      ],
+      "id": "f8268f57-8a04-4066-9c7c-ae117c7c4be3",
+      "name": "SerpAPI tool",
+      "alwaysOutputData": true,
+      "credentials": {
+        "serpApi": {
+          "id": "itRHq5PnoNjV1vHY",
+          "name": "SerpAPI account"
+        }
+      },
+      "notes": "For the date uses the format YYYY-MM-DD"
+    },
+    {
+      "parameters": {
+        "tableId": "schoolab",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "query",
+              "fieldValue": "={{ $('Webhook').item.json.body.inputChat }}"
+            },
+            {
+              "fieldId": "report",
+              "fieldValue": "={{ $json.output }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        960,
+        32
+      ],
+      "id": "2cee6ea9-3ba9-49d0-b1c4-06f9fa5163e8",
+      "name": "Create a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "uKWULhiYzfnDK5nO",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "237e7795-71d5-4f22-8131-68536195445f",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        320,
+        112
+      ],
+      "id": "978b9320-1b29-49f5-9738-17d6c6445b5a",
+      "name": "Webhook",
+      "webhookId": "237e7795-71d5-4f22-8131-68536195445f"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SerpAPI tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agent": {
+      "main": [
+        [
+          {
+            "node": "Create a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5d7fb382-394e-4a94-9bc4-811d4008b415",
+  "meta": {
+    "templateId": "self-building-ai-agent",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "b80400ff5e12f1d2bd0cf0cec4d63d5fc404a071ebebb93b854aa91302edcbcd"
+  },
+  "id": "mccwcqcB3mavFwVV",
+  "tags": []
+}
