@@ -30,6 +30,7 @@ export class TaskOrchestrator {
     const out: ResearchOutput = { nodes: [], itemsBySegment: { Company: [], Industry: [], Client: [] } };
 
     const nResolve = this.pushNode({ id: 'resolve', label: 'Resolve entities' });
+    const nResearch = this.pushNode({ id: 'research', label: 'AI-powered company research' });
     const nSearchIndustry = this.pushNode({ id: 'search-industry', label: 'Industry news search' });
     const nSearchCompany = this.pushNode({ id: 'search-company', label: 'Company news search' });
     const nSearchClients = this.pushNode({ id: 'search-clients', label: 'Client mentions search' });
@@ -41,13 +42,75 @@ export class TaskOrchestrator {
 
     try {
       this.setStatus(nResolve, 'running');
-      // Basic normalization only for MVP
+      
+      // Comprehensive input validation
+      const validationErrors: string[] = [];
+      
+      // Validate company
+      if (!input.company || typeof input.company !== 'string') {
+        validationErrors.push('Company name is required and must be a string');
+      } else if (input.company.trim().length === 0) {
+        validationErrors.push('Company name cannot be empty');
+      } else if (input.company.trim().length < 2) {
+        validationErrors.push('Company name must be at least 2 characters');
+      }
+      
+      // Validate industry
+      if (!input.industry || typeof input.industry !== 'string') {
+        validationErrors.push('Industry is required and must be a string');
+      } else if (input.industry.trim().length === 0) {
+        validationErrors.push('Industry cannot be empty');
+      } else if (input.industry.trim().length < 2) {
+        validationErrors.push('Industry must be at least 2 characters');
+      }
+      
+      // Validate clients array
+      if (!Array.isArray(input.clients)) {
+        validationErrors.push('Clients must be an array');
+      } else if (input.clients.length === 0) {
+        validationErrors.push('At least one client is required');
+      } else {
+        const invalidClients = input.clients.filter((client, index) => 
+          !client || typeof client !== 'string' || client.trim().length === 0
+        );
+        if (invalidClients.length > 0) {
+          validationErrors.push(`${invalidClients.length} invalid client(s) found - clients must be non-empty strings`);
+        }
+      }
+      
+      // Validate windowDays
+      if (typeof input.windowDays !== 'number') {
+        validationErrors.push('Window days must be a number');
+      } else if (!Number.isInteger(input.windowDays)) {
+        validationErrors.push('Window days must be an integer');
+      } else if (input.windowDays < 1) {
+        validationErrors.push('Window days must be at least 1');
+      } else if (input.windowDays > 365) {
+        validationErrors.push('Window days cannot exceed 365');
+      }
+      
+      // Validate region (optional)
+      if (input.region !== undefined && (typeof input.region !== 'string' || input.region.trim().length === 0)) {
+        validationErrors.push('Region must be a non-empty string if provided');
+      }
+      
+      // Throw validation errors if any
+      if (validationErrors.length > 0) {
+        const errorMessage = `Input validation failed:\n${validationErrors.map(err => `- ${err}`).join('\n')}`;
+        this.setStatus(nResolve, 'error', errorMessage);
+        throw new Error(errorMessage);
+      }
+      
+      // Normalize and clean input after validation
       const company = input.company.trim();
       const industry = input.industry.trim();
       const clients = input.clients.map(c => c.trim()).filter(Boolean);
-      this.setStatus(nResolve, 'success', `${company} / ${industry} (${clients.length} clients)`);
+      const region = input.region?.trim();
+      
+      this.setStatus(nResolve, 'success', `${company} / ${industry} (${clients.length} clients)${region ? ` in ${region}` : ''}`);
 
-      // Parallel searches
+      // Enhanced search with AI research
+      this.setStatus(nResearch, 'running', 'Using Perplexity AI to discover company aliases, industries, and validate clients...');
       this.setStatus(nSearchIndustry, 'running');
       this.setStatus(nSearchCompany, 'running');
       this.setStatus(nSearchClients, 'running');
@@ -55,6 +118,10 @@ export class TaskOrchestrator {
       const searchPromise = SerperSearchAgent.search({ company, industry, clients, windowDays: input.windowDays, region: input.region });
 
       const items = await searchPromise;
+      
+      // Update research status
+      this.setStatus(nResearch, 'success', 'AI research completed - enhanced search queries generated');
+      
       for (const it of items) {
         if (!out.itemsBySegment[it.segment]) out.itemsBySegment[it.segment] = [];
         out.itemsBySegment[it.segment].push(it);
@@ -62,7 +129,6 @@ export class TaskOrchestrator {
       this.setStatus(nSearchIndustry, 'success', `${out.itemsBySegment['Industry']?.length || 0} items`);
       this.setStatus(nSearchCompany, 'success', `${out.itemsBySegment['Company']?.length || 0} items`);
       this.setStatus(nSearchClients, 'success', `${out.itemsBySegment['Client']?.length || 0} items`);
-
 
       // Dedup (naive by URL)
       this.setStatus(nDedupe, 'running');
