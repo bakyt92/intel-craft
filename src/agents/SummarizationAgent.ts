@@ -1,4 +1,5 @@
 import { LS_KEYS } from "@/utils/LocalStorageKeys";
+import { SchoolabCache } from "@/utils/supabase";
 import type { SearchItem } from "@/agents/PerplexitySearchAgent";
 
 export class SummarizationAgent {
@@ -82,7 +83,21 @@ Research Data: ${serialize}`;
       }
       
       const data = await response.json();
-      return data.choices?.[0]?.message?.content as string;
+      const executiveBrief = data.choices?.[0]?.message?.content as string;
+      
+      // Save the executive brief to Supabase cache
+      if (executiveBrief && companyName) {
+        try {
+          console.log(` Saving executive brief to Supabase for ${companyName}...`);
+          await SchoolabCache.saveReport(companyName, executiveBrief);
+          console.log(` Successfully saved executive brief to cache for ${companyName}`);
+        } catch (error) {
+          console.warn(` Failed to save executive brief to cache for ${companyName}:`, error);
+          // Don't fail the entire process if cache save fails
+        }
+      }
+      
+      return executiveBrief;
     } catch (error) {
       console.error('Perplexity request failed:', error);
       throw error;
