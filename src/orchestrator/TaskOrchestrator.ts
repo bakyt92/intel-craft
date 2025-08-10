@@ -1,6 +1,6 @@
 import { SerperSearchAgent } from "@/agents/SerperSearchAgent";
-
 import { SummarizationAgent } from "@/agents/SummarizationAgent";
+import { SchoolabCache } from "@/utils/supabase";
 import type { ResearchInput, ResearchOutput, TaskNode } from "./types";
 
 export class TaskOrchestrator {
@@ -30,6 +30,7 @@ export class TaskOrchestrator {
     const out: ResearchOutput = { nodes: [], itemsBySegment: { Company: [], Industry: [], Client: [] } };
 
     const nResolve = this.pushNode({ id: 'resolve', label: 'Resolve entities' });
+    const nCache = this.pushNode({ id: 'cache', label: 'Check cached reports' });
     const nResearch = this.pushNode({ id: 'research', label: 'AI-powered company research' });
     const nSearchIndustry = this.pushNode({ id: 'search-industry', label: 'Industry news search' });
     const nSearchCompany = this.pushNode({ id: 'search-company', label: 'Company news search' });
@@ -109,7 +110,27 @@ export class TaskOrchestrator {
       
       this.setStatus(nResolve, 'success', `${company} / ${industry} (${clients.length} clients)${region ? ` in ${region}` : ''}`);
 
-      // Enhanced search with AI research
+      // Check cache for existing report
+      this.setStatus(nCache, 'running', 'Checking Supabase cache for existing reports...');
+      const cachedReport = await SchoolabCache.getCachedReport(company);
+      
+      if (cachedReport) {
+        // Use cached report and skip all processing
+        this.setStatus(nCache, 'success', 'Found cached report - using existing data');
+        this.setStatus(nResearch, 'skipped', 'Using cached data');
+        this.setStatus(nSearchIndustry, 'skipped', 'Using cached data');
+        this.setStatus(nSearchCompany, 'skipped', 'Using cached data');
+        this.setStatus(nSearchClients, 'skipped', 'Using cached data');
+        this.setStatus(nDedupe, 'skipped', 'Using cached data');
+        this.setStatus(nSummarize, 'skipped', 'Using cached data');
+        
+        out.executiveBrief = cachedReport;
+        return out;
+      } else {
+        this.setStatus(nCache, 'success', 'No cached report found - proceeding with fresh research');
+      }
+
+      // Enhanced search with AI research (only if no cache)
       this.setStatus(nResearch, 'running', 'Using Perplexity AI to discover company aliases, industries, and validate clients...');
       this.setStatus(nSearchIndustry, 'running');
       this.setStatus(nSearchCompany, 'running');
@@ -150,6 +171,17 @@ export class TaskOrchestrator {
       this.setStatus(nSummarize, 'running');
       out.executiveBrief = await SummarizationAgent.executiveBrief(out.itemsBySegment, company);
       this.setStatus(nSummarize, 'success');
+
+      // Save new report to cache
+      if (out.executiveBrief) {
+        try {
+          await SchoolabCache.saveReport(company, out.executiveBrief);
+          console.log(` Saved new report to cache for ${company}`);
+        } catch (error) {
+          console.warn('Failed to save report to cache:', error);
+          // Don't fail the entire process if cache save fails
+        }
+      }
 
       return out;
     } catch (e: any) {
