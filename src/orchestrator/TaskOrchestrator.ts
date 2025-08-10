@@ -1,4 +1,4 @@
-import { PerplexitySearchAgent } from "@/agents/PerplexitySearchAgent";
+import { SerperSearchAgent } from "@/agents/SerperSearchAgent";
 import { FirecrawlScraperAgent } from "@/agents/FirecrawlScraperAgent";
 import { SummarizationAgent } from "@/agents/SummarizationAgent";
 import type { ResearchInput, ResearchOutput, TaskNode } from "./types";
@@ -52,7 +52,7 @@ export class TaskOrchestrator {
       this.setStatus(nSearchCompany, 'running');
       this.setStatus(nSearchClients, 'running');
 
-      const searchPromise = PerplexitySearchAgent.search({ company, industry, clients, windowDays: input.windowDays, region: input.region });
+      const searchPromise = SerperSearchAgent.search({ company, industry, clients, windowDays: input.windowDays, region: input.region });
 
       const items = await searchPromise;
       for (const it of items) {

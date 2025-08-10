@@ -11,23 +11,28 @@ export const SettingsDrawer = () => {
   const { toast } = useToast();
   const [firecrawlKey, setFirecrawlKey] = useState("");
   const [perplexityKey, setPerplexityKey] = useState("");
+  const [serperKey, setSerperKey] = useState("");
 
   useEffect(() => {
     setFirecrawlKey(localStorage.getItem(LS_KEYS.firecrawlApiKey) || "");
     setPerplexityKey(localStorage.getItem(LS_KEYS.perplexityApiKey) || "");
+    setSerperKey(localStorage.getItem(LS_KEYS.serperApiKey) || "");
   }, []);
 
   const save = () => {
     if (firecrawlKey) localStorage.setItem(LS_KEYS.firecrawlApiKey, firecrawlKey);
     if (perplexityKey) localStorage.setItem(LS_KEYS.perplexityApiKey, perplexityKey);
+    if (serperKey) localStorage.setItem(LS_KEYS.serperApiKey, serperKey);
     toast({ title: "Saved", description: "API keys stored locally.", duration: 2000 });
   };
 
   const clear = () => {
     localStorage.removeItem(LS_KEYS.firecrawlApiKey);
     localStorage.removeItem(LS_KEYS.perplexityApiKey);
+    localStorage.removeItem(LS_KEYS.serperApiKey);
     setFirecrawlKey("");
     setPerplexityKey("");
+    setSerperKey("");
     toast({ title: "Cleared", description: "API keys removed.", duration: 2000 });
   };
 
@@ -51,7 +56,12 @@ export const SettingsDrawer = () => {
           <div className="space-y-2">
             <Label htmlFor="perplexity">Perplexity API Key</Label>
             <Input id="perplexity" value={perplexityKey} onChange={(e) => setPerplexityKey(e.target.value)} placeholder="pplx-..." />
-            <p className="text-xs text-muted-foreground">Used for planning, search and summaries. Stored in your browser.</p>
+            <p className="text-xs text-muted-foreground">Used for planning and summaries. Stored in your browser.</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="serper">Serper API Key</Label>
+            <Input id="serper" value={serperKey} onChange={(e) => setSerperKey(e.target.value)} placeholder="serper-..." />
+            <p className="text-xs text-muted-foreground">Used for Google News/Search. Stored in your browser.</p>
           </div>
           <div className="flex gap-3">
             <Button onClick={save} className="flex-1" variant="hero">Save</Button>
