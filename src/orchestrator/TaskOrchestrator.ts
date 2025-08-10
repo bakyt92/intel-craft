@@ -1,5 +1,5 @@
 import { SerperSearchAgent } from "@/agents/SerperSearchAgent";
-import { FirecrawlScraperAgent } from "@/agents/FirecrawlScraperAgent";
+
 import { SummarizationAgent } from "@/agents/SummarizationAgent";
 import type { ResearchInput, ResearchOutput, TaskNode } from "./types";
 
@@ -33,7 +33,7 @@ export class TaskOrchestrator {
     const nSearchIndustry = this.pushNode({ id: 'search-industry', label: 'Industry news search' });
     const nSearchCompany = this.pushNode({ id: 'search-company', label: 'Company news search' });
     const nSearchClients = this.pushNode({ id: 'search-clients', label: 'Client mentions search' });
-    const nScrape = this.pushNode({ id: 'scrape', label: 'Compliant scraping' });
+    
     const nDedupe = this.pushNode({ id: 'dedupe', label: 'Deduplicate & NER' });
     const nSummarize = this.pushNode({ id: 'summarize', label: 'Summarize with citations' });
 
@@ -63,12 +63,6 @@ export class TaskOrchestrator {
       this.setStatus(nSearchCompany, 'success', `${out.itemsBySegment['Company']?.length || 0} items`);
       this.setStatus(nSearchClients, 'success', `${out.itemsBySegment['Client']?.length || 0} items`);
 
-      // Scrape sources (allowlist: use returned URLs)
-      this.setStatus(nScrape, 'running');
-      const urls = items.map(i => i.url).filter(Boolean);
-      const scraped = await FirecrawlScraperAgent.scrapeAll(urls);
-      const hasErrors = scraped.some(s => s.error);
-      this.setStatus(nScrape, hasErrors ? 'skipped' : 'success', `${scraped.length} pages`);
 
       // Dedup (naive by URL)
       this.setStatus(nDedupe, 'running');

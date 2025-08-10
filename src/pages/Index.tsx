@@ -140,7 +140,7 @@ const Index = () => {
                 <Button onClick={() => output && downloadJSON('research.json', output)} disabled={!output} variant="outline">Export JSON</Button>
                 <Button onClick={() => output && downloadHTML('report.html', document.getElementById('report')?.innerHTML || '')} disabled={!output} variant="outline">Export HTML</Button>
               </div>
-              <p className="text-xs text-muted-foreground">Compliance: public data only, robots.txt respected via Firecrawl. No paywalls/CAPTCHA bypass.</p>
+              <p className="text-xs text-muted-foreground">Compliance: public data only, robots.txt respected. No paywalls/CAPTCHA bypass.</p>
             </div>
           </Card>
 
