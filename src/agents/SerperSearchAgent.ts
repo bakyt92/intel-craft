@@ -29,25 +29,55 @@ export class SerperSearchAgent {
     const apiKey = this.getApiKey();
     if (!apiKey) throw new Error("Serper API key missing");
 
-    const res = await fetch(this.endpoint, {
-      method: "POST",
-      headers: {
-        "X-API-KEY": apiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ q, gl: opts.gl, hl: opts.hl || "en", tbs: opts.tbs, num: opts.num || 10 })
-    });
+    // Validate and sanitize query
+    if (!q || q.trim().length === 0) {
+      console.warn('Empty query provided to Serper, skipping...');
+      return [];
+    }
 
-    if (!res.ok) throw new Error(`Serper search failed: ${res.status}`);
-    const data = await res.json();
-    const news: any[] = data.news || [];
-    return news.map((n) => ({
-      segment: "Company",
-      title: n.title,
-      url: n.link,
-      date: n.date,
-      source: n.source,
-    }));
+    // Limit query length to prevent 400 errors
+    const sanitizedQuery = q.length > 200 ? q.substring(0, 200) + '...' : q;
+
+    try {
+      const res = await fetch(this.endpoint, {
+        method: "POST",
+        headers: {
+          "X-API-KEY": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          q: sanitizedQuery, 
+          gl: opts.gl, 
+          hl: opts.hl || "en", 
+          tbs: opts.tbs, 
+          num: opts.num || 10 
+        })
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error('Serper API Error:', {
+          status: res.status,
+          query: sanitizedQuery,
+          response: errorText
+        });
+        throw new Error(`Serper search failed: ${res.status} - ${errorText}`);
+      }
+      
+      const data = await res.json();
+      const news: any[] = data.news || [];
+      return news.map((n) => ({
+        segment: "Company",
+        title: n.title,
+        url: n.link,
+        date: n.date,
+        source: n.source,
+      }));
+    } catch (error) {
+      console.error('Serper request failed:', { query: sanitizedQuery, error });
+      // Return empty array instead of throwing to prevent cascade failures
+      return [];
+    }
   }
 
   static async search(params: { company: string; industry: string; clients: string[]; windowDays: number; region?: string; }): Promise<{ items: SearchItem[]; aiResearch: AIResearchSummary }> {
@@ -75,9 +105,15 @@ export class SerperSearchAgent {
     // Step 2: Generate enhanced search queries using research data
     const companyQueries = research.aliases.map(alias => `"${alias}" news`);
     const industryQueries = research.industries.map(industry => `${industry} trends OR news`);
-    const clientQueries = research.validatedClients.map(client => 
-      research.aliases.map(alias => `"${client}" "${alias}" OR ${research.industries.join(' OR ')}`).join(' OR ')
-    );
+    
+    // Simplified client queries to prevent 400 errors
+    const clientQueries: string[] = [];
+    for (const client of research.validatedClients) {
+      // Create separate, simpler queries for each client-company combination
+      for (const alias of research.aliases.slice(0, 2)) { // Limit to 2 aliases to prevent overly long queries
+        clientQueries.push(`"${client}" "${alias}"`);
+      }
+    }
 
     // Create queries summary for frontend
     const generatedQueries: GeneratedQueries = {
