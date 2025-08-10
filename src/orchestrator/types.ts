@@ -15,8 +15,26 @@ export interface ResearchInput {
   region?: string;
 }
 
+export interface GeneratedQueries {
+  companyQueries: string[];
+  industryQueries: string[];
+  clientQueries: string[];
+  totalQueries: number;
+}
+
+export interface AIResearchSummary {
+  originalCompany: string;
+  discoveredAliases: string[];
+  originalIndustry: string;
+  discoveredIndustries: string[];
+  originalClients: string[];
+  validatedClients: string[];
+  generatedQueries: GeneratedQueries;
+}
+
 export interface ResearchOutput {
   nodes: TaskNode[];
   itemsBySegment: Record<string, any[]>;
   executiveBrief?: string;
+  aiResearch?: AIResearchSummary;
 }

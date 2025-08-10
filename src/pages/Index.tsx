@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { TaskGraph } from "@/components/TaskGraph";
 import { ExecutiveBrief } from "@/components/ExecutiveBrief";
+import { AIResearchDetails } from "@/components/AIResearchDetails";
 import { GradientBackdrop } from "@/components/GradientBackdrop";
 import { SettingsDrawer } from "@/components/SettingsDrawer";
 import { TaskOrchestrator } from "@/orchestrator/TaskOrchestrator";
@@ -151,6 +152,18 @@ const Index = () => {
             </section>
 
             <Separator />
+
+            {/* AI Research Details Section */}
+            {output?.aiResearch && (
+              <>
+                <section>
+                  <h2 className="text-lg font-semibold mb-3">AI Research Intelligence</h2>
+                  <AIResearchDetails research={output.aiResearch} />
+                </section>
+                
+                <Separator />
+              </>
+            )}
 
             <section>
               <h2 className="text-lg font-semibold mb-3">Executive brief</h2>

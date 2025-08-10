@@ -1,5 +1,6 @@
 import { LS_KEYS } from "@/utils/LocalStorageKeys";
 import { PerplexityResearchAgent, type CompanyResearch } from "./PerplexityResearchAgent";
+import type { GeneratedQueries, AIResearchSummary } from "../orchestrator/types";
 
 export interface SearchItem {
   segment: "Company" | "Industry" | "Client";
@@ -49,7 +50,7 @@ export class SerperSearchAgent {
     }));
   }
 
-  static async search(params: { company: string; industry: string; clients: string[]; windowDays: number; region?: string; }): Promise<SearchItem[]> {
+  static async search(params: { company: string; industry: string; clients: string[]; windowDays: number; region?: string; }): Promise<{ items: SearchItem[]; aiResearch: AIResearchSummary }> {
     const gl = params.region && params.region.toLowerCase() !== "global" ? params.region.toLowerCase() : undefined;
     const tbs = this.tbsFromWindowDays(params.windowDays);
 
@@ -78,10 +79,30 @@ export class SerperSearchAgent {
       research.aliases.map(alias => `"${client}" "${alias}" OR ${research.industries.join(' OR ')}`).join(' OR ')
     );
 
+    // Create queries summary for frontend
+    const generatedQueries: GeneratedQueries = {
+      companyQueries,
+      industryQueries,
+      clientQueries,
+      totalQueries: companyQueries.length + industryQueries.length + clientQueries.length
+    };
+
+    // Create AI research summary for frontend
+    const aiResearch: AIResearchSummary = {
+      originalCompany: params.company,
+      discoveredAliases: research.aliases,
+      originalIndustry: params.industry,
+      discoveredIndustries: research.industries,
+      originalClients: params.clients,
+      validatedClients: research.validatedClients,
+      generatedQueries
+    };
+
     console.log('📊 Enhanced search parameters:', {
       companyAliases: research.aliases.length,
       industries: research.industries.length,
-      validatedClients: research.validatedClients.length
+      validatedClients: research.validatedClients.length,
+      totalQueries: generatedQueries.totalQueries
     });
 
     // Step 3: Execute parallel searches with enhanced queries
@@ -127,6 +148,6 @@ export class SerperSearchAgent {
     }
 
     console.log(`✅ Found ${allItems.length} unique items across all segments`);
-    return allItems;
+    return { items: allItems, aiResearch };
   }
 }

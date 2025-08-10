@@ -115,12 +115,15 @@ export class TaskOrchestrator {
       this.setStatus(nSearchCompany, 'running');
       this.setStatus(nSearchClients, 'running');
 
-      const searchPromise = SerperSearchAgent.search({ company, industry, clients, windowDays: input.windowDays, region: input.region });
-
-      const items = await searchPromise;
+      const searchResult = await SerperSearchAgent.search({ company, industry, clients, windowDays: input.windowDays, region: input.region });
+      const items = searchResult.items;
       
-      // Update research status
-      this.setStatus(nResearch, 'success', 'AI research completed - enhanced search queries generated');
+      // Store AI research data for frontend display
+      out.aiResearch = searchResult.aiResearch;
+      
+      // Update research status with detailed information
+      const researchDetail = `Found ${searchResult.aiResearch.discoveredAliases.length} aliases, ${searchResult.aiResearch.discoveredIndustries.length} industries, ${searchResult.aiResearch.validatedClients.length} clients → Generated ${searchResult.aiResearch.generatedQueries.totalQueries} search queries`;
+      this.setStatus(nResearch, 'success', researchDetail);
       
       for (const it of items) {
         if (!out.itemsBySegment[it.segment]) out.itemsBySegment[it.segment] = [];
