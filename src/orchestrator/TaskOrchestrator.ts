@@ -148,7 +148,7 @@ export class TaskOrchestrator {
 
       // Summarize
       this.setStatus(nSummarize, 'running');
-      out.executiveBrief = await SummarizationAgent.executiveBrief(out.itemsBySegment);
+      out.executiveBrief = await SummarizationAgent.executiveBrief(out.itemsBySegment, company);
       this.setStatus(nSummarize, 'success');
 
       return out;

@@ -8,7 +8,7 @@ export class SummarizationAgent {
     return localStorage.getItem(LS_KEYS.perplexityApiKey);
   }
 
-  static async executiveBrief(segments: Record<string, SearchItem[]>) {
+  static async executiveBrief(segments: Record<string, SearchItem[]>, companyName?: string) {
     const apiKey = this.getApiKey();
     if (!apiKey) throw new Error('Perplexity API key missing');
 
@@ -28,8 +28,22 @@ export class SummarizationAgent {
       const serialize = JSON.stringify(truncatedSegments);
     }
 
-    const system = 'You are a world-class analyst. Produce concise, source-backed summaries with inline citations like [1], [2].';
-    const user = `Create an executive brief (6-10 bullets) based on the following items grouped by segments. Keep bullets crisp with dates. Include a Sources section mapping [n] to URLs. Data: ${serialize}`;
+    const system = `You are a world-class business analyst specializing in company research and intelligence. Produce concise, source-backed executive summaries with inline citations like [1], [2]. Focus on actionable insights and key developments.`;
+    
+    // Enhanced prompt with company focus
+    const companyFocus = companyName ? `focusing specifically on ${companyName}` : 'focusing on the primary company';
+    const user = `Create an executive brief (6-10 bullets) ${companyFocus} based on the following research data grouped by segments (Company, Industry, Client). 
+
+Key requirements:
+- Lead with the most important developments about ${companyName || 'the company'}
+- Include specific dates and financial figures when available
+- Highlight strategic moves, partnerships, market position changes
+- Note any client relationships or industry trends that impact the company
+- Keep bullets crisp and actionable for executive decision-making
+- Include inline citations [1], [2], etc.
+- End with a Sources section mapping [n] to URLs
+
+Research Data: ${serialize}`;
 
     // Use official Perplexity API format
     const payload = {
@@ -43,7 +57,8 @@ export class SummarizationAgent {
     console.log('Perplexity request:', { 
       model: payload.model, 
       messageCount: payload.messages.length,
-      payloadSize: payloadSizeKB 
+      payloadSize: payloadSizeKB,
+      companyFocus: companyName || 'generic'
     });
 
     try {
