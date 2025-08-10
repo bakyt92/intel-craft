@@ -22,6 +22,7 @@ const Index = () => {
   const [clients, setClients] = useState("");
   const [windowDays, setWindowDays] = useState(90);
   const [region, setRegion] = useState("");
+  const [useResearchAPI, setUseResearchAPI] = useState(true);
 
   const [nodes, setNodes] = useState<TaskNode[]>([]);
   const [output, setOutput] = useState<ResearchOutput | null>(null);
@@ -67,6 +68,7 @@ const Index = () => {
         clients: clients.split(',').map((s) => s.trim()).filter(Boolean),
         windowDays,
         region: region || undefined,
+        useResearchAPI,
       };
       const result = await orchestrator.run(input);
       setOutput(result);
@@ -133,6 +135,19 @@ const Index = () => {
                   <Label htmlFor="region">Region (optional)</Label>
                   <Input id="region" placeholder="e.g., EU, US, APAC" value={region} onChange={(e) => setRegion(e.target.value)} />
                 </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="useResearchAPI"
+                  checked={useResearchAPI}
+                  onChange={(e) => setUseResearchAPI(e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                <Label htmlFor="useResearchAPI" className="text-sm">
+                  🔬 Use External Research API
+                </Label>
               </div>
 
               <div className="flex gap-3 pt-2">

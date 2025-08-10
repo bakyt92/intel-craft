@@ -1,7 +1,8 @@
 import { SerperSearchAgent } from "@/agents/SerperSearchAgent";
 import { SummarizationAgent } from "@/agents/SummarizationAgent";
+import { ResearchAPIAgent } from "@/agents/ResearchAPIAgent";
 import { SchoolabCache } from "@/utils/supabase";
-import type { ResearchInput, ResearchOutput, TaskNode } from "./types";
+import type { ResearchInput, ResearchOutput, TaskNode, ResearchResponse } from "./types";
 
 export class TaskOrchestrator {
   private nodes: TaskNode[] = [];
@@ -31,6 +32,7 @@ export class TaskOrchestrator {
 
     const nResolve = this.pushNode({ id: 'resolve', label: 'Resolve entities' });
     const nCache = this.pushNode({ id: 'cache', label: 'Check cached reports' });
+    const nResearchAPI = this.pushNode({ id: 'research-api', label: 'External Research API' });
     const nResearch = this.pushNode({ id: 'research', label: 'AI-powered company research' });
     const nSearchIndustry = this.pushNode({ id: 'search-industry', label: 'Industry news search' });
     const nSearchCompany = this.pushNode({ id: 'search-company', label: 'Company news search' });
@@ -128,6 +130,7 @@ export class TaskOrchestrator {
         }
 
         // Skip all other research when cached data exists
+        this.setStatus(nResearchAPI, 'skipped', 'Using cached data - Research API not needed');
         this.setStatus(nResearch, 'skipped', 'Using cached data - AI research not needed');
         this.setStatus(nSearchIndustry, 'skipped', 'Using cached data');
         this.setStatus(nSearchCompany, 'skipped', 'Using cached data');
@@ -143,7 +146,44 @@ export class TaskOrchestrator {
         this.setStatus(nCache, 'success', 'No cached reports found - proceeding with fresh research');
       }
 
-      // Enhanced search with AI research (only if no cache)
+      // Step 2: Run Research API (only if no cached data and if enabled)
+      if (input.useResearchAPI !== false) {
+        this.setStatus(nResearchAPI, 'running', 'Running External Research API...');
+        
+        try {
+          const researchQuery = ResearchAPIAgent.generateResearchQuery(company, industry, clients);
+          const apiResult = await ResearchAPIAgent.startResearch(researchQuery);
+          
+          if (apiResult.success) {
+            this.setStatus(nResearchAPI, 'success', `Research API completed (${apiResult.rounds || 0} rounds)`);
+            
+            // Check for new reports from Research API
+            const newCachedReports = await SchoolabCache.getAllCachedReports(company);
+            const newReports = newCachedReports.filter(report => 
+              !cachedReports.some(cached => cached.id === report.id)
+            );
+            
+            // Add new Research API reports to responses
+            for (const newReport of newReports) {
+              out.allResponses.push({
+                source: 'research-api',
+                query: newReport.query,
+                report: newReport.report,
+                timestamp: newReport.created_at,
+                metadata: { rounds: apiResult.rounds }
+              });
+            }
+          } else {
+            this.setStatus(nResearchAPI, 'error', `Research API failed: ${apiResult.message}`);
+          }
+        } catch (error) {
+          this.setStatus(nResearchAPI, 'error', `Research API error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      } else {
+        this.setStatus(nResearchAPI, 'skipped', 'Research API disabled by user');
+      }
+
+      // Step 3: Run AI Research workflow (only if no cached data)
       this.setStatus(nResearch, 'running', 'Using Perplexity AI to discover company aliases, industries, and validate clients...');
       this.setStatus(nSearchIndustry, 'running');
       this.setStatus(nSearchCompany, 'running');
