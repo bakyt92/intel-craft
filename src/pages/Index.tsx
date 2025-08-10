@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { TaskGraph } from "@/components/TaskGraph";
 import { ExecutiveBrief } from "@/components/ExecutiveBrief";
 import { AIResearchDetails } from "@/components/AIResearchDetails";
+import { AllResearchResponses } from "@/components/AllResearchResponses";
 import { GradientBackdrop } from "@/components/GradientBackdrop";
 import { SettingsDrawer } from "@/components/SettingsDrawer";
 import { TaskOrchestrator } from "@/orchestrator/TaskOrchestrator";
@@ -165,15 +166,39 @@ const Index = () => {
               </>
             )}
 
+            {/* All Research Responses Section */}
+            {output?.allResponses && output.allResponses.length > 0 && (
+              <>
+                <section>
+                  <h2 className="text-lg font-semibold mb-3">Research Reports</h2>
+                  <AllResearchResponses responses={output.allResponses} />
+                </section>
+                
+                <Separator />
+              </>
+            )}
+
+            {/* Executive Brief Section - Keep for backward compatibility */}
+            {output?.executiveBrief && (
+              <>
+                <section>
+                  <h2 className="text-lg font-semibold mb-3">Latest Executive Brief</h2>
+                  <Card className="p-4">
+                    <div className="prose prose-sm max-w-none">
+                      {output.executiveBrief.split('\n').map((paragraph, i) => (
+                        <p key={i} className="mb-3 last:mb-0">
+                          {paragraph}
+                        </p>
+                      ))}
+                    </div>
+                  </Card>
+                </section>
+              </>
+            )}
+
             <section>
               <h2 className="text-lg font-semibold mb-3">Executive brief</h2>
               <div id="report" className="rounded-lg border p-6 bg-card shadow-sm">
-                {output?.executiveBrief ? (
-                  <ExecutiveBrief brief={output.executiveBrief} />
-                ) : (
-                  <p className="text-sm text-muted-foreground">Your summarized brief will appear here with inline citations and a sources appendix.</p>
-                )}
-
                 {!!appendix.length && (
                   <div className="mt-6">
                     <h3 className="font-semibold mb-2">Sources appendix</h3>

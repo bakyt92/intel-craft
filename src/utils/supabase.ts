@@ -14,7 +14,36 @@ export interface SchoolabRecord {
 
 export class SchoolabCache {
   /**
-   * Check if a company research report exists in cache
+   * Get all cached reports for a company
+   */
+  static async getAllCachedReports(companyName: string): Promise<SchoolabRecord[]> {
+    try {
+      const { data, error } = await supabase
+        .from('schoolab')
+        .select('*')
+        .ilike('query', `%${companyName}%`)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Supabase all reports lookup error:', error);
+        return [];
+      }
+
+      if (data && data.length > 0) {
+        console.log(`✅ Found ${data.length} cached reports for ${companyName}`);
+        return data;
+      }
+
+      console.log(`❌ No cached reports found for ${companyName}`);
+      return [];
+    } catch (error) {
+      console.error('All reports lookup failed:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Check if a company research report exists in cache (single latest)
    */
   static async getCachedReport(companyName: string): Promise<string | null> {
     try {

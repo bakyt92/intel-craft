@@ -32,9 +32,23 @@ export interface AIResearchSummary {
   generatedQueries: GeneratedQueries;
 }
 
+export interface ResearchResponse {
+  source: 'cache' | 'research-api' | 'ai-research';
+  query: string;
+  report: string;
+  timestamp?: string;
+  metadata?: {
+    rounds?: number;
+    aliases?: string[];
+    industries?: string[];
+    clients?: string[];
+  };
+}
+
 export interface ResearchOutput {
   nodes: TaskNode[];
   itemsBySegment: Record<string, any[]>;
   executiveBrief?: string;
   aiResearch?: AIResearchSummary;
+  allResponses: ResearchResponse[];
 }

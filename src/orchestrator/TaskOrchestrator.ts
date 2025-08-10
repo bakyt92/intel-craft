@@ -27,7 +27,7 @@ export class TaskOrchestrator {
   }
 
   async run(input: ResearchInput): Promise<ResearchOutput> {
-    const out: ResearchOutput = { nodes: [], itemsBySegment: { Company: [], Industry: [], Client: [] } };
+    const out: ResearchOutput = { nodes: [], itemsBySegment: { Company: [], Industry: [], Client: [] }, allResponses: [] };
 
     const nResolve = this.pushNode({ id: 'resolve', label: 'Resolve entities' });
     const nCache = this.pushNode({ id: 'cache', label: 'Check cached reports' });
@@ -110,24 +110,37 @@ export class TaskOrchestrator {
       
       this.setStatus(nResolve, 'success', `${company} / ${industry} (${clients.length} clients)${region ? ` in ${region}` : ''}`);
 
-      // Check cache for existing report
-      this.setStatus(nCache, 'running', 'Checking Supabase cache for existing reports...');
-      const cachedReport = await SchoolabCache.getCachedReport(company);
+      // Step 1: Get ALL cached reports
+      this.setStatus(nCache, 'running', 'Retrieving all cached reports from Supabase...');
+      const cachedReports = await SchoolabCache.getAllCachedReports(company);
       
-      if (cachedReport) {
-        // Use cached report and skip all processing
-        this.setStatus(nCache, 'success', 'Found cached report - using existing data');
-        this.setStatus(nResearch, 'skipped', 'Using cached data');
+      if (cachedReports.length > 0) {
+        this.setStatus(nCache, 'success', `Found ${cachedReports.length} cached reports - using cached data only`);
+        
+        // Add all cached reports to responses
+        for (const cached of cachedReports) {
+          out.allResponses.push({
+            source: 'cache',
+            query: cached.query,
+            report: cached.report,
+            timestamp: cached.created_at
+          });
+        }
+
+        // Skip all other research when cached data exists
+        this.setStatus(nResearch, 'skipped', 'Using cached data - AI research not needed');
         this.setStatus(nSearchIndustry, 'skipped', 'Using cached data');
         this.setStatus(nSearchCompany, 'skipped', 'Using cached data');
         this.setStatus(nSearchClients, 'skipped', 'Using cached data');
         this.setStatus(nDedupe, 'skipped', 'Using cached data');
         this.setStatus(nSummarize, 'skipped', 'Using cached data');
-        
-        out.executiveBrief = cachedReport;
+
+        // Set the most recent cached report as the main executive brief for backward compatibility
+        out.executiveBrief = cachedReports[0].report;
+
         return out;
       } else {
-        this.setStatus(nCache, 'success', 'No cached report found - proceeding with fresh research');
+        this.setStatus(nCache, 'success', 'No cached reports found - proceeding with fresh research');
       }
 
       // Enhanced search with AI research (only if no cache)
